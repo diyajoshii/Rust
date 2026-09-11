@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["driver"]
+# `demo-tm4c123g` joins the workspace in Phase 7. It is target-only
+# (needs a linker script and cortex-m-rt) and must never be built for
+# the host, which is why the driver and the demo are separate packages.
+
+[workspace.package]
+edition = "2024"
+authors = ["Diya Joshi <diyajoshi1909@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/diyajoshii/mpu6050-nostd"

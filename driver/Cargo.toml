@@ -1,0 +1,22 @@
+[package]
+name = "mpu6050-nostd"
+version = "0.1.0"
+description = "An MPU-6050 driver you can test without an MPU-6050: register-level no_std Rust with a fault-injecting mock I2C bus"
+readme = "../README.md"
+keywords = ["mpu6050", "embedded-hal", "no-std", "i2c", "imu"]
+categories = ["embedded", "no-std", "hardware-support"]
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+embedded-hal = "1.0"
+
+[features]
+# Pure `no_std`. Nothing here needs an allocator or an operating system.
+default = []
+# Enables `mpu6050_nostd::mock`, a fake I2C bus with a register backing
+# store, a transaction log and programmable faults. Pulls in `std`.
+# This is the only feature that may touch `std` or `alloc`.
+mock = []
