@@ -10,6 +10,10 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[package.metadata.docs.rs]
+# Build hosted docs with the mock so its API is documented alongside the driver.
+features = ["mock"]
+
 [dependencies]
 embedded-hal = "1.0"
 
