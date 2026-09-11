@@ -82,15 +82,16 @@ jobs:
         with:
           targets: thumbv7em-none-eabihf
           components: clippy, llvm-tools-preview
-      - uses: taiki-e/install-action@cargo-binutils
       - name: Build
         run: cargo build -p demo-tm4c123g --release --target thumbv7em-none-eabihf
       - name: Clippy
         run: cargo clippy -p demo-tm4c123g --release --target thumbv7em-none-eabihf -- -D warnings
       # Flash = .vector_table + .text + .rodata (+ .data load image). Never the ELF total.
+      # llvm-size ships with the llvm-tools component, so no extra install is needed.
       - name: Size
         run: |
-          cargo size -p demo-tm4c123g --release --target thumbv7em-none-eabihf -- -A | tee size.txt
+          LLVM_SIZE=$(find "$(rustc --print sysroot)/lib/rustlib" -name llvm-size -type f | head -1)
+          "$LLVM_SIZE" -A target/thumbv7em-none-eabihf/release/demo-tm4c123g | tee size.txt
           FLASH=$(awk '$1 ~ /^\.(vector_table|text|rodata|data)$/ {s+=$2} END {print s}' size.txt)
           echo "flash footprint: ${FLASH} bytes"
           echo "### Demo flash footprint: ${FLASH} bytes (.vector_table + .text + .rodata + .data)" >> "$GITHUB_STEP_SUMMARY"
