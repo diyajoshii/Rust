@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  no_std:
+    name: no_std build (thumbv7em-none-eabihf)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7em-none-eabihf
+          components: clippy
+      # Proves the crate really is no_std: this target has no std to fall back on.
+      - name: Build for Cortex-M4F
+        run: cargo build -p mpu6050-nostd --no-default-features --target thumbv7em-none-eabihf
+      - name: Clippy for Cortex-M4F
+        run: cargo clippy -p mpu6050-nostd --no-default-features --target thumbv7em-none-eabihf -- -D warnings
+
+  host:
+    name: host tests (mock)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt, llvm-tools-preview
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Test
+        run: cargo test -p mpu6050-nostd --features mock
+      # --all-targets includes tests/, which import the mock, so the feature is required here.
+      - name: Clippy (all targets)
+        run: cargo clippy -p mpu6050-nostd --all-targets --features mock -- -D warnings
+      # Line coverage, including mock.rs. This number is the one quoted in the README.
+      - name: Coverage
+        run: cargo llvm-cov -p mpu6050-nostd --features mock --summary-only
