@@ -5,7 +5,6 @@
 # Editor / tooling state
 .vscode/
 .idea/
-.claude/
 *.swp
 
 # Vendor documentation is proprietary; quote it in docs/datasheet-notes.md, do not redistribute it.
