@@ -208,6 +208,13 @@ impl MockI2c {
         self.nacks
     }
 
+    /// Total transactions attempted so far, successful or not. The next
+    /// transaction will have this index — useful for aiming
+    /// [`Fault::NackAfter`] and [`Fault::CorruptByte`].
+    pub fn transactions_seen(&self) -> usize {
+        self.txn_index
+    }
+
     /// Bytes currently in the FIFO.
     pub fn fifo_len(&self) -> usize {
         self.fifo.len()
