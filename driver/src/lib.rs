@@ -36,11 +36,13 @@
 extern crate std;
 
 pub mod error;
+pub mod fifo;
 #[cfg(feature = "mock")]
 pub mod mock;
 pub mod registers;
 
 pub use error::Error;
+pub use fifo::{FifoConfig, FifoSample};
 pub use registers::{AccelRange, DlpfConfig, GyroRange};
 
 use embedded_hal::i2c::I2c;
@@ -81,6 +83,9 @@ pub struct Mpu6050<I2C> {
     accel_range: AccelRange,
     gyro_range: GyroRange,
     dlpf: DlpfConfig,
+    fifo: FifoConfig,
+    /// Set when an overflow has been observed and not yet reset.
+    fifo_poisoned: bool,
     initialised: bool,
 }
 
@@ -94,6 +99,8 @@ impl<I2C: I2c> Mpu6050<I2C> {
             accel_range: AccelRange::G2,
             gyro_range: GyroRange::Dps250,
             dlpf: DlpfConfig::Hz260,
+            fifo: FifoConfig::NONE,
+            fifo_poisoned: false,
             initialised: false,
         }
     }
