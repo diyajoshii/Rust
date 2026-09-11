@@ -4,7 +4,7 @@
 
 Register-level `no_std` Rust for the InvenSense MPU-6050 accelerometer/gyroscope, generic over [`embedded-hal`](https://crates.io/crates/embedded-hal) 1.0, with a fault-injecting mock I2C bus so the whole driver — including bus failures — runs under `cargo test` on a laptop with no hardware attached.
 
-[![CI](https://github.com/diyajoshii/mpu6050-nostd/actions/workflows/ci.yml/badge.svg)](https://github.com/diyajoshii/mpu6050-nostd/actions/workflows/ci.yml)
+[![CI](https://github.com/diyajoshii/Rust/actions/workflows/ci.yml/badge.svg)](https://github.com/diyajoshii/Rust/actions/workflows/ci.yml)
 
 > **Status:** under construction. Register map and datasheet notes are in; driver, mock bus and FIFO are being built in the open. Nothing is published to crates.io yet.
 
