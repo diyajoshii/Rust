@@ -159,7 +159,7 @@ fn main() -> ! {
     loop {
         drains += 1;
 
-        if drains % 20 == 0 {
+        if drains.is_multiple_of(20) {
             // Deliberately overflow: 1400 B/s into 1024 B for two seconds.
             writeln!(uart, "--- provoking overflow: not reading for 2 s ---").ok();
             delay_ms(2000);

@@ -5,10 +5,11 @@
 Register-level `no_std` Rust for the InvenSense MPU-6050 accelerometer/gyroscope, generic over [`embedded-hal`](https://crates.io/crates/embedded-hal) 1.0, with a fault-injecting mock I2C bus so the whole driver — including the FIFO, including bus failures — runs under `cargo test` on a laptop with no hardware attached.
 
 [![CI](https://github.com/diyajoshii/Rust/actions/workflows/ci.yml/badge.svg)](https://github.com/diyajoshii/Rust/actions/workflows/ci.yml)
+[![line coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/diyajoshii/Rust/coverage/badge.json)](https://github.com/diyajoshii/Rust/blob/coverage/coverage.json)
 
-**76 tests. Line coverage is printed by the `Coverage` step of every CI run** — open the latest run above and read the number from the log rather than from this file; it cannot go stale there.
+**76 tests.** The coverage badge is written by CI on every push to `main` — `cargo llvm-cov` output, including `mock.rs`, committed as [`badge.json`](https://github.com/diyajoshii/Rust/blob/coverage/badge.json) on the `coverage` branch. It cannot go stale and nobody types it in.
 
-> **Status:** driver, mock bus and FIFO are complete and under test. On-target validation on a TI TM4C123G LaunchPad is the next milestone; the hardware sections below are marked accordingly. Not yet published to crates.io.
+> **Status:** driver, mock bus and FIFO are complete and under test. The on-target demo binary builds for the TM4C123G at **10,608 bytes of flash** (release, size-optimised — measured by CI's `cargo size` step). Validation on real silicon is the next milestone; the hardware sections below are marked accordingly. Not yet published to crates.io.
 
 ---
 
@@ -101,6 +102,8 @@ mpu6050-nostd/
 
 **Why the demo is a separate package.** A Cortex-M binary needs a linker script, `cortex-m-rt` and a panic handler; it cannot build for the host, and `cargo clippy --all-targets` would try. The workspace keeps the driver host-testable and target-buildable while the demo stays target-only.
 
+**Why the demo has its own HAL bridge.** `tm4c123x-hal` predates `embedded-hal` 1.0 and implements the 0.2 traits — `Write`, `Read`, `WriteRead`, nothing more. The driver targets 1.0 and stays that way; the adaptation lives entirely in [`demo-tm4c123g/src/bridge.rs`](demo-tm4c123g/src/bridge.rs). The off-the-shelf `embedded-hal-compat` shim was tried first and rejected by the compiler: its blanket impl also demands `WriteIter`, `Transactional` and friends, which the HAL does not provide. The hand-written bridge needs exactly what the HAL has, coalesces a `Write`+`Read` operation pair into one `write_read` so the repeated start survives, and is forty lines.
+
 **The driver holds state on purpose.** Accelerometer range, gyroscope range, DLPF setting and FIFO configuration all live in the struct. Unit conversion, the sample-rate divider and the FIFO packet length are *derived* from them. A driver that hard-codes ±2 g, or a 1 kHz base rate, or a 14-byte packet, is wrong the moment any of those is changed.
 
 **Reset is polled, not slept.** `DEVICE_RESET` "automatically clears to 0 once the reset is done" (Register 107). The driver reads it until it does, bounded by `RESET_POLL_LIMIT`. No `DelayNs` generic, no magic constant, and the timeout path has a test.
@@ -162,6 +165,8 @@ This driver refuses. `fifo_read()` returns `Error::FifoOverflow` and reads nothi
 | AD0 | GND (or leave floating — pulled down on most boards) | Address `0x68`; tie to 3.3 V for `0x69` |
 
 **Pull-ups:** the GY-521 usually carries 2.2 kΩ pull-ups on SCL and SDA. If yours does not, add 4.7 kΩ to 3.3 V on each line. A bus with no pull-ups reads `0xFF` on every byte — which is exactly what `Fault::StuckHigh` reproduces, and why `init()` rejects `WHO_AM_I = 0xFF` as `WrongDevice(0xFF)` instead of hanging.
+
+**Flash footprint of the demo:** 10,608 bytes — `.vector_table` 1,024 + `.text` 7,888 + `.rodata` 1,696 — for `cargo build -p demo-tm4c123g --release --target thumbv7em-none-eabihf` with `opt-level = "s"` and LTO. That includes `init`, register reads, the full FIFO path with overflow recovery, and UART output with integer formatting only. `cargo size -- -A` also prints a `Total` line several times larger: that is the ELF with debug info, not what goes on the chip.
 
 **Logic-analyser capture:** *to be added after on-target validation.*
 

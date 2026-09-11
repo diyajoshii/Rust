@@ -27,6 +27,8 @@ jobs:
   host:
     name: host tests (mock)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to publish badge.json to the `coverage` branch
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -40,6 +42,55 @@ jobs:
       # --all-targets includes tests/, which import the mock, so the feature is required here.
       - name: Clippy (all targets)
         run: cargo clippy -p mpu6050-nostd --all-targets --features mock -- -D warnings
-      # Line coverage, including mock.rs. This number is the one quoted in the README.
+      # Line coverage, including mock.rs. This is the number quoted in the README.
       - name: Coverage
-        run: cargo llvm-cov -p mpu6050-nostd --features mock --summary-only
+        run: |
+          cargo llvm-cov -p mpu6050-nostd --features mock --summary-only
+          cargo llvm-cov -p mpu6050-nostd --features mock --json --summary-only --output-path coverage.json
+          PCT=$(jq -r '.data[0].totals.lines.percent' coverage.json)
+          PCT1=$(printf '%.1f' "$PCT")
+          COLOR=red; awk "BEGIN{exit !($PCT>=80)}" && COLOR=yellow; awk "BEGIN{exit !($PCT>=90)}" && COLOR=brightgreen
+          jq -n --arg msg "${PCT1}%" --arg color "$COLOR" \
+            '{schemaVersion:1,label:"line coverage",message:$msg,color:$color}' > badge.json
+          echo "line coverage: ${PCT1}%"
+          echo "### Line coverage: ${PCT1}%" >> "$GITHUB_STEP_SUMMARY"
+      # Publish the number where the README badge (and anyone else) can read it without auth.
+      - name: Publish coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p out && cp badge.json coverage.json out/
+          echo "Coverage for ${GITHUB_SHA} — written by CI, do not edit." > out/README.md
+          cd out
+          git init -q -b coverage
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -q --allow-empty -m "coverage for ${GITHUB_SHA::7}" || true
+          git add -A
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -q -m "coverage for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:coverage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  demo:
+    name: demo binary (TM4C123G, release)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7em-none-eabihf
+          components: clippy, llvm-tools-preview
+      - uses: taiki-e/install-action@cargo-binutils
+      - name: Build
+        run: cargo build -p demo-tm4c123g --release --target thumbv7em-none-eabihf
+      - name: Clippy
+        run: cargo clippy -p demo-tm4c123g --release --target thumbv7em-none-eabihf -- -D warnings
+      # Flash = .vector_table + .text + .rodata (+ .data load image). Never the ELF total.
+      - name: Size
+        run: |
+          cargo size -p demo-tm4c123g --release --target thumbv7em-none-eabihf -- -A | tee size.txt
+          FLASH=$(awk '$1 ~ /^\.(vector_table|text|rodata|data)$/ {s+=$2} END {print s}' size.txt)
+          echo "flash footprint: ${FLASH} bytes"
+          echo "### Demo flash footprint: ${FLASH} bytes (.vector_table + .text + .rodata + .data)" >> "$GITHUB_STEP_SUMMARY"
