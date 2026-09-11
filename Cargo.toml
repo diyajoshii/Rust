@@ -1,9 +1,19 @@
 [workspace]
 resolver = "2"
-members = ["driver"]
-# `demo-tm4c123g` joins the workspace in Phase 7. It is target-only
-# (needs a linker script and cortex-m-rt) and must never be built for
-# the host, which is why the driver and the demo are separate packages.
+members = ["driver", "demo-tm4c123g"]
+# Only the driver builds by default. `demo-tm4c123g` is target-only (it
+# needs a linker script and cortex-m-rt) and must never be built for the
+# host; build it with:
+#   cargo build -p demo-tm4c123g --release --target thumbv7em-none-eabihf
+default-members = ["driver"]
+
+# Profiles are only honoured at the workspace root. Size-optimised release
+# for the demo so `cargo size` reports a number worth quoting.
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+debug = true          # DWARF is not loaded to flash; keeps probe-rs useful
 
 [workspace.package]
 edition = "2024"

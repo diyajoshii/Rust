@@ -1,0 +1,5 @@
+# Linker script for Cortex-M builds. Only consulted when --target is the
+# ARM triple; the driver's own no_std check builds a library, so the link
+# argument is inert there. The demo binary needs it.
+[target.thumbv7em-none-eabihf]
+rustflags = ["-C", "link-arg=-Tlink.x"]

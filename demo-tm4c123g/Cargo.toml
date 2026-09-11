@@ -1,0 +1,20 @@
+[package]
+name = "demo-tm4c123g"
+version = "0.1.0"
+description = "On-target demo of mpu6050-nostd on a TI EK-TM4C123GXL LaunchPad"
+publish = false
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+mpu6050-nostd = { path = "../driver" }
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+panic-halt = "1.0"
+tm4c123x-hal = "0.10"
+# The TM4C HAL implements the embedded-hal 0.2 traits; the driver targets
+# 1.0. src/bridge.rs adapts one to the other at this boundary only.
+embedded-hal = "1.0"
+embedded-hal-02 = { package = "embedded-hal", version = "0.2" }
