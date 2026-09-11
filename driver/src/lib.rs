@@ -22,6 +22,8 @@
 extern crate std;
 
 pub mod error;
+#[cfg(feature = "mock")]
+pub mod mock;
 pub mod registers;
 
 pub use error::Error;

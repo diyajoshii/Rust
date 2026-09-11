@@ -89,6 +89,8 @@ pub const USER_CTRL_FIFO_EN: u8 = 0x40;
 pub const USER_CTRL_I2C_IF_DIS: u8 = 0x10;
 /// `USER_CTRL` bit 2 — resets the FIFO. **Only takes effect while `FIFO_EN` is 0.** Self-clears.
 pub const USER_CTRL_FIFO_RESET: u8 = 0x04;
+/// `USER_CTRL` bit 1 — resets the auxiliary I2C master. Self-clears. Not used by this driver.
+pub const USER_CTRL_I2C_MST_RESET: u8 = 0x02;
 /// `USER_CTRL` bit 0 — resets the sensor signal paths and registers. Self-clears.
 pub const USER_CTRL_SIG_COND_RESET: u8 = 0x01;
 
