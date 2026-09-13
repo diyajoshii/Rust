@@ -1,6 +1,6 @@
 [package]
 name = "mpu6050-nostd"
-version = "0.1.0"
+version = "0.2.0"
 description = "An MPU-6050 driver you can test without an MPU-6050: register-level no_std Rust with a fault-injecting mock I2C bus"
 readme = "../README.md"
 keywords = ["mpu6050", "embedded-hal", "no-std", "i2c", "imu"]

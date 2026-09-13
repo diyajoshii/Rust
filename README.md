@@ -11,12 +11,12 @@ Register-level `no_std` Rust for the InvenSense MPU-6050 accelerometer/gyroscope
 
 ```toml
 [dependencies]
-mpu6050-nostd = "0.1"
+mpu6050-nostd = "0.2"
 ```
 
 **87 tests.** The coverage badge is written by CI on every push to `main` — `cargo llvm-cov` output, including `mock.rs`, committed as [`badge.json`](https://github.com/diyajoshii/Rust/blob/coverage/badge.json) on the `coverage` branch. It cannot go stale and nobody types it in.
 
-> **Status:** 0.1.0 is published. Driver, mock bus and FIFO are complete and under test. The on-target demo binary builds for the TM4C123G at **10,608 bytes of flash** (release, size-optimised — measured by CI). Validation on real silicon is the next milestone and will ship as 0.2.0 with the logic-analyser capture; the hardware sections below are marked accordingly.
+> **Status:** 0.2.0 is published. Driver, mock bus and FIFO are complete and under test. The on-target demo binary builds for the TM4C123G at **10,608 bytes of flash** (release, size-optimised — measured by CI). Validation on real silicon is the next milestone and will ship as 0.3.0 with the logic-analyser capture; the hardware sections below are marked accordingly.
 
 ---
 
@@ -183,9 +183,9 @@ Three datasheet details it gets right that are easy to miss:
 
 ## Roadmap
 
-### 0.2.0 — on-target validation
+### 0.3.0 — on-target validation
 
-The driver is complete and host-tested. What no mock can prove is what the *part* does, so 0.2.0 is the release that runs the demo on silicon and records the answers. The runbook is [`demo-tm4c123g/README.md`](demo-tm4c123g/README.md).
+The driver is complete and host-tested. What no mock can prove is what the *part* does, so 0.3.0 is the release that runs the demo on silicon and records the answers. The runbook is [`demo-tm4c123g/README.md`](demo-tm4c123g/README.md).
 
 - [ ] `WHO_AM_I` reads `0x68` over a real bus
 - [ ] Z ≈ +1 g at rest, X and Y ≈ 0; axes swap correctly on rotation
@@ -220,7 +220,7 @@ The driver is complete and host-tested. What no mock can prove is what the *part
 
 **Flash footprint of the demo:** 10,608 bytes — `.vector_table` 1,024 + `.text` 7,888 + `.rodata` 1,696 — for `cargo build -p demo-tm4c123g --release --target thumbv7em-none-eabihf` with `opt-level = "s"` and LTO. That includes `init`, register reads, the full FIFO path with overflow recovery, and UART output with integer formatting only. `cargo size -- -A` also prints a `Total` line several times larger: that is the ELF with debug info, not what goes on the chip.
 
-**Logic-analyser capture:** arrives with 0.2.0.
+**Logic-analyser capture:** arrives with 0.3.0.
 
 ---
 

@@ -2,7 +2,7 @@
 
 All notable changes to `mpu6050-nostd`. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] — 2026-09-13
 
 ### Added
 
@@ -44,4 +44,5 @@ First release. Host-tested; not yet validated on silicon (see README → Hardwar
 - CI builds for `thumbv7em-none-eabihf` with `--no-default-features` to prove `no_std`.
 - Demo binary for the TM4C123G LaunchPad builds at 10,608 bytes of flash; hand-written `embedded-hal` 0.2 → 1.0 bridge.
 
+[0.2.0]: https://github.com/diyajoshii/Rust/releases/tag/v0.2.0
 [0.1.0]: https://github.com/diyajoshii/Rust/releases/tag/v0.1.0
