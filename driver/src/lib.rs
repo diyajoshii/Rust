@@ -40,10 +40,12 @@ pub mod fifo;
 #[cfg(feature = "mock")]
 pub mod mock;
 pub mod registers;
+pub mod selftest;
 
 pub use error::Error;
 pub use fifo::{FifoConfig, FifoSample};
 pub use registers::{AccelRange, DlpfConfig, GyroRange};
+pub use selftest::SelfTestReport;
 
 use embedded_hal::i2c::I2c;
 use registers::{

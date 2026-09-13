@@ -10,6 +10,51 @@ Quotes are verbatim; `[...]` marks elision. Whitespace inside quotes is normalis
 
 ---
 
+## Self-test
+
+### Registers 13–16 (`SELF_TEST_X/Y/Z/A`) — `0x0D`–`0x10`
+
+Layout, verbatim from the register table:
+
+| Reg | Bits 7:5 | Bits 4:0 |
+|---|---|---|
+| 13 `SELF_TEST_X` | `XA_TEST[4:2]` | `XG_TEST[4:0]` |
+| 14 `SELF_TEST_Y` | `YA_TEST[4:2]` | `YG_TEST[4:0]` |
+| 15 `SELF_TEST_Z` | `ZA_TEST[4:2]` | `ZG_TEST[4:0]` |
+| 16 `SELF_TEST_A` | reserved (7:6) · `XA_TEST[1:0]` (5:4) · `YA_TEST[1:0]` (3:2) · `ZA_TEST[1:0]` (1:0) |
+
+> "the factory trim values for the accel should be in decimal format, and they are determined by concatenating the upper accelerometer self test bits (bits 4-2) with the lower accelerometer self test bits (bits 1-0)."
+
+So `XA_TEST = (SELF_TEST_X[7:5] << 2) | SELF_TEST_A[5:4]`, and similarly for Y (`A[3:2]`) and Z (`A[1:0]`). Gyro values are the low five bits directly.
+
+**Procedure and pass criterion:**
+
+> "Self-Test Response = Gyroscope Output with Self-Test Enabled − Gyroscope Output with Self-Test Disabled"
+
+> "Change from Factory Trim of the Self-Test Response (%) = (STR − FT) / FT"
+
+> "This change from factory trim of the self-test response must be within the limits provided in the MPU-6000/MPU-6050 Product Specification document for the part to pass self-test."
+
+The register map **does not state the limit**; it defers to the Product Specification (PS-MPU-6000A). The driver therefore takes the tolerance as a parameter. `DEFAULT_SELF_TEST_TOLERANCE_PERCENT = 14.0` is the figure that document is widely reported to give — it is a default, not a quotation, and is labelled as such in the code. Confirm against the Product Specification before relying on it for a production pass/fail.
+
+**Gyroscope factory trim** — "When performing self test for the gyroscope, the full-scale range should be set to ±250dps."
+
+> `FT[Xg] = 25 ∗ 131 ∗ 1.046^(XG_TEST−1)  if XG_TEST ≠ 0;  FT[Xg] = 0 if XG_TEST = 0`
+> `FT[Yg] = −25 ∗ 131 ∗ 1.046^(YG_TEST−1) if YG_TEST ≠ 0;  FT[Yg] = 0 if YG_TEST = 0`
+> `FT[Zg] = 25 ∗ 131 ∗ 1.046^(ZG_TEST−1)  if ZG_TEST ≠ 0;  FT[Zg] = 0 if ZG_TEST = 0`
+
+Note the sign on Y. 131 is the ±250 dps sensitivity (Register 27).
+
+**Accelerometer factory trim** — "When performing accelerometer self test, the full-scale range should be set to ±8g."
+
+> `FT[Xa] = 4096 ∗ 0.34 ∗ (0.92/0.34)^((XA_TEST−1)/(2^5−2))  if XA_TEST ≠ 0;  FT[Xa] = 0 if XA_TEST = 0`
+
+Same for Y and Z. 4096 is the ±8 g sensitivity (Register 28); `2^5 − 2 = 30`. At `n = 31` the exponent is 1 and FT = 4096 × 0.92.
+
+**Implementation note.** `core` has no `powf`, and the exponent is a 5-bit integer, so the driver carries two 31-entry `f32` tables — `1.046^(n−1)` and `(0.92/0.34)^((n−1)/30)` for `n = 1..=31` — computed offline and checked against `f32::powf` in a host test. `FT = 0` (test value 0) has no defined pass criterion; the driver reports that axis as `None` and the overall result as failed.
+
+**Settling time is not specified** in the register map. The driver waits `SELF_TEST_SETTLE_MS` (50 ms) after toggling the self-test bits, via a caller-supplied `embedded_hal::delay::DelayNs`. This is the only place the driver needs a delay, which is why it is an argument to `self_test()` rather than a field of the driver.
+
 ## Identity
 
 ### Register 117 (`WHO_AM_I`) — `0x75`

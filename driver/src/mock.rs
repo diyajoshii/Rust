@@ -25,6 +25,7 @@
 //! The mock is the only part of this crate that uses `std`. It is compiled
 //! only under the `mock` feature.
 
+use embedded_hal::delay::DelayNs;
 use embedded_hal::i2c::{
     ErrorKind, ErrorType, I2c, NoAcknowledgeSource, Operation, SevenBitAddress,
 };
@@ -32,12 +33,19 @@ use std::collections::VecDeque;
 use std::vec::Vec;
 
 use crate::registers::{
-    ADDR_AD0_LOW, FIFO_CAPACITY_BYTES, FIFO_EN_ACCEL, FIFO_EN_TEMP, FIFO_EN_XG, FIFO_EN_YG,
-    FIFO_EN_ZG, INT_FIFO_OFLOW, PWR_MGMT_1_DEVICE_RESET, PWR_MGMT_1_SLEEP, REG_FIFO_COUNT_H,
-    REG_FIFO_COUNT_L, REG_FIFO_EN, REG_FIFO_R_W, REG_INT_STATUS, REG_PWR_MGMT_1, REG_USER_CTRL,
-    REG_WHO_AM_I, USER_CTRL_FIFO_EN, USER_CTRL_FIFO_RESET, USER_CTRL_I2C_MST_RESET,
-    USER_CTRL_SIG_COND_RESET, WHO_AM_I_VALUE,
+    ACCEL_CONFIG_ST_ALL, ADDR_AD0_LOW, FIFO_CAPACITY_BYTES, FIFO_EN_ACCEL, FIFO_EN_TEMP,
+    FIFO_EN_XG, FIFO_EN_YG, FIFO_EN_ZG, GYRO_CONFIG_ST_ALL, INT_FIFO_OFLOW,
+    PWR_MGMT_1_DEVICE_RESET, PWR_MGMT_1_SLEEP, REG_ACCEL_CONFIG, REG_ACCEL_XOUT_H,
+    REG_FIFO_COUNT_H, REG_FIFO_COUNT_L, REG_FIFO_EN, REG_FIFO_R_W, REG_GYRO_CONFIG,
+    REG_GYRO_XOUT_H, REG_INT_STATUS, REG_PWR_MGMT_1, REG_USER_CTRL, REG_WHO_AM_I,
+    USER_CTRL_FIFO_EN, USER_CTRL_FIFO_RESET, USER_CTRL_I2C_MST_RESET, USER_CTRL_SIG_COND_RESET,
+    WHO_AM_I_VALUE,
 };
+
+/// Last register of the accelerometer output block (`ACCEL_ZOUT_L`).
+const REG_ACCEL_ZOUT_L: u8 = REG_ACCEL_XOUT_H + 5;
+/// Last register of the gyroscope output block (`GYRO_ZOUT_L`).
+const REG_GYRO_ZOUT_L: u8 = REG_GYRO_XOUT_H + 5;
 
 /// Bus error produced by the mock.
 ///
@@ -152,6 +160,10 @@ pub struct MockI2c {
     faults: Vec<Fault>,
     txn_index: usize,
     nacks: usize,
+    /// Added to gyro outputs while `GYRO_CONFIG` self-test bits are set.
+    st_gyro: [i16; 3],
+    /// Added to accel outputs while `ACCEL_CONFIG` self-test bits are set.
+    st_accel: [i16; 3],
 }
 
 impl Default for MockI2c {
@@ -180,6 +192,8 @@ impl MockI2c {
             faults: Vec::new(),
             txn_index: 0,
             nacks: 0,
+            st_gyro: [0; 3],
+            st_accel: [0; 3],
         };
         mock.load_defaults();
         mock
@@ -258,6 +272,15 @@ impl MockI2c {
     /// Append bytes to the FIFO as if the sensor had sampled them.
     pub fn push_fifo(&mut self, bytes: &[u8]) {
         self.fifo.extend(bytes.iter().copied());
+    }
+
+    /// Model the self-test actuators. While the `*_ST` bits of `GYRO_CONFIG`
+    /// / `ACCEL_CONFIG` are set, the corresponding output registers read as
+    /// their stored value plus these responses — so a driver's
+    /// `with − without` measurement yields exactly what was set here.
+    pub fn set_self_test_response(&mut self, gyro: [i16; 3], accel: [i16; 3]) {
+        self.st_gyro = gyro;
+        self.st_accel = accel;
     }
 
     /// How many reads of `PWR_MGMT_1` still show `DEVICE_RESET` set after a
@@ -387,8 +410,31 @@ impl MockI2c {
                 }
                 self.regs[reg as usize]
             }
+            REG_ACCEL_XOUT_H..=REG_ACCEL_ZOUT_L => {
+                let actuated = self.regs[REG_ACCEL_CONFIG as usize] & ACCEL_CONFIG_ST_ALL != 0;
+                self.sensor_byte(REG_ACCEL_XOUT_H, reg, actuated, self.st_accel)
+            }
+            REG_GYRO_XOUT_H..=REG_GYRO_ZOUT_L => {
+                let actuated = self.regs[REG_GYRO_CONFIG as usize] & GYRO_CONFIG_ST_ALL != 0;
+                self.sensor_byte(REG_GYRO_XOUT_H, reg, actuated, self.st_gyro)
+            }
             _ => self.regs[reg as usize],
         }
+    }
+
+    /// One byte of a six-byte sensor block, with the self-test response
+    /// added to the 16-bit value when the actuator is on.
+    fn sensor_byte(&self, block: u8, reg: u8, actuated: bool, response: [i16; 3]) -> u8 {
+        let offset = usize::from(reg - block);
+        let axis = offset / 2;
+        let base = usize::from(block) + 2 * axis;
+        let stored = i16::from_be_bytes([self.regs[base], self.regs[base + 1]]);
+        let value = if actuated {
+            stored.wrapping_add(response[axis])
+        } else {
+            stored
+        };
+        value.to_be_bytes()[offset % 2]
     }
 
     fn apply_write(&mut self, bytes: &[u8]) {
@@ -484,6 +530,26 @@ fn classify(addr: u8, mut ops: Vec<OpSummary>) -> Transaction {
             received: core::mem::take(r),
         },
         _ => Transaction::Raw { addr, ops },
+    }
+}
+
+/// A [`DelayNs`] that records what was asked of it and never sleeps.
+///
+/// The driver needs a delay in exactly one place — the self-test settling
+/// time — and a test cares that the delay was *requested*, not that wall-clock
+/// time passed.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct MockDelay {
+    /// Sum of every delay requested, in nanoseconds.
+    pub total_ns: u64,
+    /// Number of delay calls.
+    pub calls: usize,
+}
+
+impl DelayNs for MockDelay {
+    fn delay_ns(&mut self, ns: u32) {
+        self.total_ns += u64::from(ns);
+        self.calls += 1;
     }
 }
 

@@ -21,6 +21,14 @@ pub const WHO_AM_I_VALUE: u8 = 0x68;
 
 // --- Register addresses -----------------------------------------------------
 
+/// Register 13 — `SELF_TEST_X`: `XA_TEST[4:2]` in bits 7:5, `XG_TEST[4:0]` in bits 4:0.
+pub const REG_SELF_TEST_X: u8 = 0x0D;
+/// Register 14 — `SELF_TEST_Y`: `YA_TEST[4:2]` in bits 7:5, `YG_TEST[4:0]` in bits 4:0.
+pub const REG_SELF_TEST_Y: u8 = 0x0E;
+/// Register 15 — `SELF_TEST_Z`: `ZA_TEST[4:2]` in bits 7:5, `ZG_TEST[4:0]` in bits 4:0.
+pub const REG_SELF_TEST_Z: u8 = 0x0F;
+/// Register 16 — `SELF_TEST_A`: `XA_TEST[1:0]` in bits 5:4, `YA_TEST[1:0]` in bits 3:2, `ZA_TEST[1:0]` in bits 1:0.
+pub const REG_SELF_TEST_A: u8 = 0x10;
 /// Register 25 — sample rate divider.
 pub const REG_SMPLRT_DIV: u8 = 0x19;
 /// Register 26 — external sync and digital low-pass filter configuration.
@@ -65,6 +73,13 @@ pub const PWR_MGMT_1_SLEEP: u8 = 0x40;
 /// The datasheet recommends a gyroscope PLL over the internal 8 MHz oscillator
 /// for stability.
 pub const PWR_MGMT_1_CLKSEL_PLL_X: u8 = 0x01;
+
+// --- GYRO_CONFIG / ACCEL_CONFIG self-test bits (Registers 27 and 28) --------
+
+/// `GYRO_CONFIG` bits 7:5 — `XG_ST`, `YG_ST`, `ZG_ST`. Actuates all three gyro axes.
+pub const GYRO_CONFIG_ST_ALL: u8 = 0xE0;
+/// `ACCEL_CONFIG` bits 7:5 — `XA_ST`, `YA_ST`, `ZA_ST`. Actuates all three accel axes.
+pub const ACCEL_CONFIG_ST_ALL: u8 = 0xE0;
 
 // --- FIFO_EN (Register 35) --------------------------------------------------
 
