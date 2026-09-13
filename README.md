@@ -4,12 +4,19 @@
 
 Register-level `no_std` Rust for the InvenSense MPU-6050 accelerometer/gyroscope, generic over [`embedded-hal`](https://crates.io/crates/embedded-hal) 1.0, with a fault-injecting mock I2C bus so the whole driver — including the FIFO, including bus failures — runs under `cargo test` on a laptop with no hardware attached.
 
+[![crates.io](https://img.shields.io/crates/v/mpu6050-nostd.svg)](https://crates.io/crates/mpu6050-nostd)
+[![docs.rs](https://img.shields.io/docsrs/mpu6050-nostd)](https://docs.rs/mpu6050-nostd)
 [![CI](https://github.com/diyajoshii/Rust/actions/workflows/ci.yml/badge.svg)](https://github.com/diyajoshii/Rust/actions/workflows/ci.yml)
 [![line coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/diyajoshii/Rust/coverage/badge.json)](https://github.com/diyajoshii/Rust/blob/coverage/coverage.json)
 
+```toml
+[dependencies]
+mpu6050-nostd = "0.1"
+```
+
 **76 tests.** The coverage badge is written by CI on every push to `main` — `cargo llvm-cov` output, including `mock.rs`, committed as [`badge.json`](https://github.com/diyajoshii/Rust/blob/coverage/badge.json) on the `coverage` branch. It cannot go stale and nobody types it in.
 
-> **Status:** driver, mock bus and FIFO are complete and under test. The on-target demo binary builds for the TM4C123G at **10,608 bytes of flash** (release, size-optimised — measured by CI's `cargo size` step). Validation on real silicon is the next milestone; the hardware sections below are marked accordingly. Not yet published to crates.io.
+> **Status:** 0.1.0 is published. Driver, mock bus and FIFO are complete and under test. The on-target demo binary builds for the TM4C123G at **10,608 bytes of flash** (release, size-optimised — measured by CI). Validation on real silicon is the next milestone and will ship as 0.2.0 with the logic-analyser capture; the hardware sections below are marked accordingly.
 
 ---
 
