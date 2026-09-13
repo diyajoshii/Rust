@@ -2,6 +2,17 @@
 
 All notable changes to `mpu6050-nostd`. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Hardware self-test.** `Mpu6050::self_test(&mut delay, tolerance_percent)` runs the six-axis actuation sequence and returns a `SelfTestReport` with per-axis response, factory trim, deviation and pass flags. Factory trim follows Registers 13–16 exactly: gyro `±25·131·1.046^(n−1)` at ±250 dps (Y negative), accel `4096·0.34·(0.92/0.34)^((n−1)/30)` at ±8 g, with the accel test values reassembled from the split fields of Registers 13–16. Exponentials are 31-entry tables verified against `f32::powf`. Ranges are restored and actuation switched off even if a bus error interrupts the run.
+- `selftest::{gyro_factory_trim, accel_factory_trim, SelfTestValues, GYRO_TRIM_TABLE, ACCEL_TRIM_TABLE, DEFAULT_SELF_TEST_TOLERANCE_PERCENT, SELF_TEST_SETTLE_MS, SELF_TEST_SAMPLES}`.
+- `registers::{REG_SELF_TEST_X/Y/Z/A, GYRO_CONFIG_ST_ALL, ACCEL_CONFIG_ST_ALL}`.
+- Mock: `MockI2c::set_self_test_response()` models the actuators; `MockDelay` records requested delays without sleeping.
+
+11 new tests (87 total).
+
 ## [0.1.0] — 2026-09-13
 
 First release. Host-tested; not yet validated on silicon (see README → Hardware).

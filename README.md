@@ -14,7 +14,7 @@ Register-level `no_std` Rust for the InvenSense MPU-6050 accelerometer/gyroscope
 mpu6050-nostd = "0.1"
 ```
 
-**76 tests.** The coverage badge is written by CI on every push to `main` — `cargo llvm-cov` output, including `mock.rs`, committed as [`badge.json`](https://github.com/diyajoshii/Rust/blob/coverage/badge.json) on the `coverage` branch. It cannot go stale and nobody types it in.
+**87 tests.** The coverage badge is written by CI on every push to `main` — `cargo llvm-cov` output, including `mock.rs`, committed as [`badge.json`](https://github.com/diyajoshii/Rust/blob/coverage/badge.json) on the `coverage` branch. It cannot go stale and nobody types it in.
 
 > **Status:** 0.1.0 is published. Driver, mock bus and FIFO are complete and under test. The on-target demo binary builds for the TM4C123G at **10,608 bytes of flash** (release, size-optimised — measured by CI). Validation on real silicon is the next milestone and will ship as 0.2.0 with the logic-analyser capture; the hardware sections below are marked accordingly.
 
@@ -157,6 +157,30 @@ This driver refuses. `fifo_read()` returns `Error::FifoOverflow` and reads nothi
 
 ---
 
+## Self-test
+
+The part can actuate each sensor's proof mass electrically and report the response, and each part carries a factory-trim value for that response in Registers 13–16. Comparing the two checks the mechanical and electrical path without moving the board.
+
+```rust
+let report = imu.self_test(&mut delay, DEFAULT_SELF_TEST_TOLERANCE_PERCENT)?;
+if !report.passed() {
+    // report.gyro_passed(), report.accel_passed(): per-axis
+    // report.gyro_deviation_percent[i]: Some((STR − FT) / FT × 100), or None if FT is undefined
+}
+```
+
+What the driver does, all of it visible on the bus: sets ±250 dps and ±8 g (the ranges the trim formulas assume), averages eight reads, enables all six `*_ST` bits, waits, averages again, then restores your ranges with actuation off — **even if a bus error interrupted the measurement** — and finally reads the four trim registers in one burst.
+
+Three datasheet details it gets right that are easy to miss:
+
+- **The gyro Y trim is negative.** `FT[Yg] = −25 · 131 · 1.046^(n−1)`; X and Z are positive.
+- **Accel test values are split across registers.** `XA_TEST` is bits 7:5 of Register 13 concatenated with bits 5:4 of Register 16 — five bits from two places.
+- **The pass limit is not in the register map.** It defers to the Product Specification, so the tolerance is an argument you supply; `DEFAULT_SELF_TEST_TOLERANCE_PERCENT` is labelled as a default, not a quotation.
+
+`core` has no `powf`, and the exponent is a 5-bit integer, so the two exponentials are 31-entry tables computed offline and verified against `f32::powf` by a host test. `self_test()` is the only method that takes a delay — nothing else in the driver needs a timer.
+
+---
+
 ## Roadmap
 
 ### 0.2.0 — on-target validation
@@ -171,7 +195,6 @@ The driver is complete and host-tested. What no mock can prove is what the *part
 
 ### After that
 
-- **Self-test.** Registers 13–16 and the factory-trim formula are fully documented; implementing them is real datasheet arithmetic, entirely testable against the mock.
 - **Motion-detection interrupt** — `MOT_THR`, `MOT_DUR`, `INT_ENABLE.MOT_EN`. Documented, small.
 - **`embedded-hal-async`** — the same driver over the async I2C trait, with an async mock.
 - **Fuzzing `FifoSample::parse`** with `cargo fuzz` — `no_std` parsing code under a fuzzer, no hardware required.
