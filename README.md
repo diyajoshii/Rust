@@ -157,9 +157,31 @@ This driver refuses. `fifo_read()` returns `Error::FifoOverflow` and reads nothi
 
 ---
 
-## Hardware
+## Roadmap
 
-*Not yet validated on silicon. Wiring below is from the TM4C123GH6PM and GY-521 documentation and will be confirmed with a logic-analyser capture.*
+### 0.2.0 — on-target validation
+
+The driver is complete and host-tested. What no mock can prove is what the *part* does, so 0.2.0 is the release that runs the demo on silicon and records the answers. The runbook is [`demo-tm4c123g/README.md`](demo-tm4c123g/README.md).
+
+- [ ] `WHO_AM_I` reads `0x68` over a real bus
+- [ ] Z ≈ +1 g at rest, X and Y ≈ 0; axes swap correctly on rotation
+- [ ] The `init()` sequence on a logic analyser matches what `tests/init.rs` asserts — capture committed as `docs/scope-capture.png`
+- [ ] The HAL's `write_read` issues a repeated START, not a STOP, between register address and data
+- [ ] The overflow prediction below — `flag = true, FIFO_COUNT = 1024, count mod 14 = 2` — confirmed or refuted, and this README updated with whichever it was
+
+### After that
+
+- **Self-test.** Registers 13–16 and the factory-trim formula are fully documented; implementing them is real datasheet arithmetic, entirely testable against the mock.
+- **Motion-detection interrupt** — `MOT_THR`, `MOT_DUR`, `INT_ENABLE.MOT_EN`. Documented, small.
+- **`embedded-hal-async`** — the same driver over the async I2C trait, with an async mock.
+- **Fuzzing `FifoSample::parse`** with `cargo fuzz` — `no_std` parsing code under a fuzzer, no hardware required.
+- **Low-power cycle mode** — `LP_WAKE_CTRL`.
+
+**Not planned: the DMP.** The Digital Motion Processor runs an undocumented firmware blob. Supporting it would mean porting InvenSense's binary the way every other DMP driver does, which is the opposite of what this crate is for.
+
+### Target hardware
+
+*Wiring is from the TM4C123GH6PM and GY-521 documentation; not yet exercised on silicon.*
 
 **Target:** TI EK-TM4C123GXL LaunchPad (Cortex-M4F, `thumbv7em-none-eabihf`), GY-521 MPU-6050 breakout.
 
@@ -175,7 +197,7 @@ This driver refuses. `fifo_read()` returns `Error::FifoOverflow` and reads nothi
 
 **Flash footprint of the demo:** 10,608 bytes — `.vector_table` 1,024 + `.text` 7,888 + `.rodata` 1,696 — for `cargo build -p demo-tm4c123g --release --target thumbv7em-none-eabihf` with `opt-level = "s"` and LTO. That includes `init`, register reads, the full FIFO path with overflow recovery, and UART output with integer formatting only. `cargo size -- -A` also prints a `Total` line several times larger: that is the ELF with debug info, not what goes on the chip.
 
-**Logic-analyser capture:** *to be added after on-target validation.*
+**Logic-analyser capture:** arrives with 0.2.0.
 
 ---
 
